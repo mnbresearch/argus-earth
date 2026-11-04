@@ -1,0 +1,17 @@
+{
+  "name": "argus-earth",
+  "version": "1.0.0",
+  "description": "Zero-install 3D intelligence globe of live public signals — aircraft, satellites, ISS, earthquakes, NASA events, UN disaster alerts and launches — with geofences, voice control, pass prediction and SITREPs.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Mridul Nanda (MNB Research / Abrobot.ai)",
+  "repository": { "type": "git", "url": "https://github.com/mnbresearch/argus-earth.git" },
+  "homepage": "https://mnbresearch.github.io/argus-earth/",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "keywords": ["osint", "cesium", "3d-globe", "ads-b", "satellites", "earthquakes", "geospatial", "situational-awareness", "gods-eye-view"]
+}

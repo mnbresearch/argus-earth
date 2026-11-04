@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>ARGUS Earth — open-source intelligence globe</title>
+    <meta name="description" content="A zero-install 3D globe of live public signals: aircraft, satellites, the ISS, earthquakes, NASA natural events, UN disaster alerts and rocket launches — with geofence alerts, voice commands, satellite pass prediction and one-click situation reports." />
+    <meta property="og:title" content="ARGUS Earth — open-source intelligence globe" />
+    <meta property="og:description" content="Live aircraft, satellites, quakes, disasters and launches on a 3D globe. Geofences, voice control, SITREPs. No install, no API keys." />
+    <meta property="og:image" content="docs/screenshot.png" />
+    <meta name="theme-color" content="#05080d" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='none' stroke='%233ee0ff' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%233ee0ff'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+    <link href="css/style.css" rel="stylesheet" />
+    <script>
+      window.CESIUM_BASE_URL = 'https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/';
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/satellite.js@6.0.2/dist/satellite.min.js"></script>
+    <script src="js/config.js"></script>
+  </head>
+  <body data-sensor="normal">
+    <div id="globe"></div>
+    <div class="sensor-overlay" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="brand" title="ARGUS Earth">
+        <svg viewBox="0 0 64 64" width="22" height="22" aria-hidden="true"><circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="32" cy="32" r="9" fill="currentColor"/><path d="M5 32h10M49 32h10M32 5v10M32 49v10" stroke="currentColor" stroke-width="4"/></svg>
+        <span>ARGUS</span><small>EARTH</small>
+      </div>
+      <form class="cmd" id="cmdForm" autocomplete="off">
+        <span class="cmd-prompt">›</span>
+        <input id="cmd" type="text" spellcheck="false" placeholder="Fly, track, filter, ask… try “track iss” or “sitrep”  (press /)" aria-label="Command" />
+        <button type="button" id="micBtn" class="icon-btn" title="Voice command (V)" aria-label="Voice command">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
+        </button>
+      </form>
+      <div class="top-actions">
+        <span class="clock" id="clock">--:--:-- UTC</span>
+        <button class="btn ghost" id="sitrepBtn" title="Situation report for this view">SITREP</button>
+        <button class="icon-btn" id="shareBtn" title="Copy share link" aria-label="Share">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.4a3 3 0 0 0 0-1.6l6.7-3.4A3 3 0 1 0 15 7l-6.7 3.4a3 3 0 1 0 0 3.2L15 17a3 3 0 1 0 3-1Z"/></svg>
+        </button>
+        <button class="icon-btn" id="helpBtn" title="Commands" aria-label="Help">?</button>
+        <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3h-4l-.4 2.9a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1L11 21h4l.4-2.9c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5-2.2-1.6ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="cmd-reply" id="cmdReply" role="status" aria-live="polite"></div>
+
+    <aside class="panel left" id="leftPanel">
+      <button class="panel-toggle" data-target="leftPanel" aria-label="Toggle layers">Layers</button>
+      <section>
+        <h3>Live layers</h3>
+        <ul class="layers" id="layerList"></ul>
+      </section>
+      <section>
+        <h3>Sensor</h3>
+        <div class="seg" id="sensorSeg">
+          <button data-mode="normal" class="on">EO</button>
+          <button data-mode="nvg">NVG</button>
+          <button data-mode="flir">FLIR</button>
+          <button data-mode="crt">CRT</button>
+          <button data-mode="noir">NOIR</button>
+        </div>
+      </section>
+      <section>
+        <h3>Tools</h3>
+        <div class="tool-grid">
+          <button class="btn" id="zoneBtn" title="Click the globe to place a watch zone">＋ Watch zone</button>
+          <button class="btn" id="timeBtn">⏱ Time machine</button>
+          <button class="btn" id="exportGeo">⤓ GeoJSON</button>
+          <button class="btn" id="exportCsv">⤓ CSV</button>
+          <button class="btn" id="locateBtn">◎ My location</button>
+          <button class="btn" id="homeBtn">⌂ Whole Earth</button>
+        </div>
+      </section>
+    </aside>
+
+    <aside class="panel right" id="rightPanel">
+      <button class="panel-toggle" data-target="rightPanel" aria-label="Toggle intel">Intel</button>
+      <section id="inspector" class="inspector empty">
+        <h3>Inspector</h3>
+        <div id="inspectorBody"><p class="muted">Click anything on the globe — a plane, satellite, quake or alert — to inspect it.</p></div>
+      </section>
+      <section>
+        <h3>Alerts <span class="badge" id="alertCount">0</span>
+          <button class="link" id="notifyBtn" title="Desktop notifications">🔔 notify</button></h3>
+        <ul class="alerts" id="alertList"><li class="muted">Emergency squawks, M5.5+ quakes, red disaster alerts and watch-zone entries appear here.</li></ul>
+      </section>
+      <section>
+        <h3>Watch zones</h3>
+        <ul class="zones" id="zoneList"></ul>
+      </section>
+      <section id="passesSection" hidden>
+        <h3>Passes <span class="muted" id="passesTitle"></span></h3>
+        <ul class="passes" id="passList"></ul>
+      </section>
+    </aside>
+
+    <div class="timebar" id="timebar" hidden>
+      <button class="icon-btn" id="tmPlay" aria-label="Play">▶</button>
+      <input type="range" id="tmRange" min="0" max="1000" value="1000" aria-label="Time" />
+      <span class="tm-label" id="tmLabel">now</span>
+      <button class="icon-btn" id="tmClose" aria-label="Close time machine">✕</button>
+    </div>
+
+    <footer class="hud">
+      <span id="hudCursor">CURSOR —</span>
+      <span id="hudCam">ALT —</span>
+      <span id="hudSun">—</span>
+      <span id="hudFeeds" class="feeds"></span>
+    </footer>
+
+    <div class="placing-hint" id="placingHint" hidden>Click the globe to drop a watch zone · <kbd>Esc</kbd> to cancel</div>
+
+    <dialog id="modal">
+      <form method="dialog" class="modal-inner">
+        <header><h2 id="modalTitle"></h2><button class="icon-btn" value="close" aria-label="Close">✕</button></header>
+        <div id="modalBody"></div>
+        <footer id="modalFooter"></footer>
+      </form>
+    </dialog>
+
+    <div id="welcome" class="welcome" hidden>
+      <div class="welcome-card">
+        <h1>ARGUS <span>Earth</span></h1>
+        <p>Every dot is a real, public signal — aircraft transponders, orbital elements, seismographs, NASA and UN alerts. No install. No keys.</p>
+        <div class="quick">
+          <button data-cmd="track iss">🛰 Ride with the ISS</button>
+          <button data-cmd="quakes above 4.5">🌋 Big quakes this week</button>
+          <button data-cmd="fly to new delhi">✈ Flights over Delhi</button>
+          <button data-cmd="time machine">⏱ Replay 7 days of quakes</button>
+        </div>
+        <button class="btn primary" id="welcomeGo">Explore the globe</button>
+      </div>
+    </div>
+
+    <div id="toasts" class="toasts"></div>
+    <noscript>ARGUS Earth needs JavaScript and WebGL.</noscript>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
